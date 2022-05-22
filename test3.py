@@ -54,12 +54,12 @@ def make_xyVectorDistribution_fromQaryMemorylessDistribution(xyDistribution):
         return xyVectorDistribution
     return make_xyVectrorDistribution
 
-def test(q):
+def test(q, listDecode=False, maxListSize=None, crcSize=None):
     print("q = " + str(q))
 
-    p = 0.11
+    p = 0.99
     L = 100
-    n = 7
+    n = 5
     N = 2 ** n
 
     upperBoundOnErrorProbability = 0.1
@@ -72,19 +72,24 @@ def test(q):
 
     # print("Rate = ", N - len(frozenSet), "/", N, " = ", (N - len(frozenSet)) / N)
 
-    numberOfTrials = 4000
+    numberOfTrials = 200
 
     make_xVectorDistribution = make_xVectorDistribution_fromQaryMemorylessDistribution(q, xyDistribution, N)
     make_codeword = make_codeword_noprocessing
     simulateChannel = simulateChannel_fromQaryMemorylessDistribution(xyDistribution)
     make_xyVectorDistribution = make_xyVectorDistribution_fromQaryMemorylessDistribution(xyDistribution)
 
-    QaryPolarEncoderDecoder.encodeDecodeSimulation(q, N, make_xVectorDistribution, make_codeword, simulateChannel,
-                                                   make_xyVectorDistribution, numberOfTrials, frozenSet, verbosity=0)
+    if not listDecode:
+        QaryPolarEncoderDecoder.encodeDecodeSimulation(q, N, make_xVectorDistribution, make_codeword, simulateChannel,
+                                                       make_xyVectorDistribution, numberOfTrials, frozenSet, verbosity=0)
+    else:
+        QaryPolarEncoderDecoder.encodeListDecodeSimulation(q, N, make_xVectorDistribution, make_codeword, simulateChannel,
+                                                           make_xyVectorDistribution, numberOfTrials, frozenSet, maxListSize, crcSize, verbosity=0)
 
     # # trustXYProbs = False
     # trustXYProbs = True
     # PolarEncoderDecoder.genieEncodeDecodeSimulation(N, make_xVectorDistribuiton, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, upperBoundOnErrorProbability, trustXYProbs)
 
-test(2)
-test(3)
+# test(2)
+# test(3)
+test(3, listDecode=True, maxListSize=1, crcSize=1)
