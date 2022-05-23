@@ -64,11 +64,12 @@ class QaryPolarEncoderDecoder:
         assert (len(xVectorDistribution) == self.length)
         assert (len(information) == self.k)
 
+        (encodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex,
+                                                                                               informationVectorIndex,
+                                                                                               xVectorDistribution)
 
-        (encodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex, informationVectorIndex, xVectorDistribution)
-
-        assert( next_uIndex == len(encodedVector) == len(xVectorDistribution)  == self.length )
-        assert( next_informationVectorIndex == len(information)  == self.k )
+        assert (next_uIndex == len(encodedVector) == len(xVectorDistribution) == self.length)
+        assert (next_informationVectorIndex == len(information) == self.k)
 
         return encodedVector
 
@@ -91,10 +92,13 @@ class QaryPolarEncoderDecoder:
 
         assert (len(xVectorDistribution) == len(xyVectorDistribution) == self.length)
 
-        (encodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex, informationVectorIndex, xVectorDistribution, xyVectorDistribution)
+        (encodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex,
+                                                                                               informationVectorIndex,
+                                                                                               xVectorDistribution,
+                                                                                               xyVectorDistribution)
 
-        assert( next_uIndex == len(encodedVector) == self.length )
-        assert( next_informationVectorIndex == len(information) == self.k )
+        assert (next_uIndex == len(encodedVector) == self.length)
+        assert (next_informationVectorIndex == len(information) == self.k)
 
         return information
 
@@ -119,14 +123,17 @@ class QaryPolarEncoderDecoder:
 
         assert (len(xVectorDistribution) == len(xyVectorDistribution) == self.length)
 
-        (informationList, encodedVectorList, next_uIndex, next_informationVectorIndex, finalListSize, originalIndicesMap) = self.recursiveListDecode(informationList, uIndex, informationVectorIndex, [xVectorDistribution], [xyVectorDistribution], inListSize=1, maxListSize=maxListSize)
+        (informationList, encodedVectorList, next_uIndex, next_informationVectorIndex, finalListSize,
+         originalIndicesMap) = self.recursiveListDecode(informationList, uIndex, informationVectorIndex,
+                                                        [xVectorDistribution], [xyVectorDistribution], inListSize=1,
+                                                        maxListSize=maxListSize)
 
-        assert(1 <= finalListSize <= maxListSize)
-        assert(len(encodedVectorList) == finalListSize)
-        assert( next_uIndex == len(encodedVectorList[0]) == self.length )
-        assert( next_informationVectorIndex == self.k )
-        assert(len(originalIndicesMap) == finalListSize)
-        assert(np.count_nonzero(originalIndicesMap) == 0)
+        assert (1 <= finalListSize <= maxListSize)
+        assert (len(encodedVectorList) == finalListSize)
+        assert (next_uIndex == len(encodedVectorList[0]) == self.length)
+        assert (next_informationVectorIndex == self.k)
+        assert (len(originalIndicesMap) == finalListSize)
+        assert (np.count_nonzero(originalIndicesMap) == 0)
 
         for information, encodedVector in zip(informationList, encodedVectorList):
             cur_check = np.matmul(information, check_matrix) % self.q
@@ -152,16 +159,20 @@ class QaryPolarEncoderDecoder:
         informationVectorIndex = 0
         information = []
 
-        assert( len(xVectorDistribution) == self.length )
+        assert (len(xVectorDistribution) == self.length)
 
         # print(xyVectorDistribution)
 
-        (decodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex, informationVectorIndex, xVectorDistribution, xyVectorDistribution, marginalizedUProbs)
+        (decodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex,
+                                                                                               informationVectorIndex,
+                                                                                               xVectorDistribution,
+                                                                                               xyVectorDistribution,
+                                                                                               marginalizedUProbs)
 
         # print( decodedVector, marginalizedUProbs )
-        assert( next_uIndex == len(decodedVector) == len(xVectorDistribution) )
-        assert( next_informationVectorIndex == len(information) == 0 )
-        assert( len(marginalizedUProbs) ==  self.length )
+        assert (next_uIndex == len(decodedVector) == len(xVectorDistribution))
+        assert (next_informationVectorIndex == len(information) == 0)
+        assert (len(marginalizedUProbs) == self.length)
 
         if trustXYProbs:
             Pevec = np.array([min(probTuple) for probTuple in marginalizedUProbs])
@@ -188,14 +199,17 @@ class QaryPolarEncoderDecoder:
         informationVectorIndex = 0
         information = []
 
-        assert( len(xVectorDistribution) == self.length )
+        assert (len(xVectorDistribution) == self.length)
 
-        (encodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex, informationVectorIndex, xVectorDistribution, None, marginalizedUProbs)
+        (encodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex,
+                                                                                               informationVectorIndex,
+                                                                                               xVectorDistribution,
+                                                                                               None, marginalizedUProbs)
 
         # print( encodedVector, marginalizedUProbs )
-        assert( next_uIndex == len(encodedVector) == len(xVectorDistribution) )
-        assert( next_informationVectorIndex == len(information) == 0 )
-        assert( len(marginalizedUProbs) ==  self.length )
+        assert (next_uIndex == len(encodedVector) == len(xVectorDistribution))
+        assert (next_informationVectorIndex == len(information) == 0)
+        assert (len(marginalizedUProbs) == self.length)
 
         TVvec = []
         Hvec = []
@@ -206,7 +220,8 @@ class QaryPolarEncoderDecoder:
 
         return (encodedVector, TVvec, Hvec)
 
-    def recursiveEncodeDecode(self, information, uIndex, informationVectorIndex, xVectorDistribution, xyVectorDistribution=None, marginalizedUProbs=None):
+    def recursiveEncodeDecode(self, information, uIndex, informationVectorIndex, xVectorDistribution,
+                              xyVectorDistribution=None, marginalizedUProbs=None):
         """Encode/decode according to supplied vector distributions
 
         Args:
@@ -262,7 +277,12 @@ class QaryPolarEncoderDecoder:
             else:
                 xyMinusVectorDistribution = None
 
-            (minusEncodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex, informationVectorIndex, xMinusVectorDistribution, xyMinusVectorDistribution, marginalizedUProbs)
+            (minusEncodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information,
+                                                                                                        uIndex,
+                                                                                                        informationVectorIndex,
+                                                                                                        xMinusVectorDistribution,
+                                                                                                        xyMinusVectorDistribution,
+                                                                                                        marginalizedUProbs)
 
             xPlusVectorDistribution = xVectorDistribution.plusTransform(minusEncodedVector)
             xPlusVectorDistribution.normalize()
@@ -274,17 +294,23 @@ class QaryPolarEncoderDecoder:
 
             uIndex = next_uIndex
             informationVectorIndex = next_informationVectorIndex
-            (plusEncodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex, informationVectorIndex, xPlusVectorDistribution, xyPlusVectorDistribution, marginalizedUProbs)
+            (plusEncodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information,
+                                                                                                       uIndex,
+                                                                                                       informationVectorIndex,
+                                                                                                       xPlusVectorDistribution,
+                                                                                                       xyPlusVectorDistribution,
+                                                                                                       marginalizedUProbs)
 
             halfLength = len(xVectorDistribution) // 2
 
             for halfi in range(halfLength):
-                encodedVector[2*halfi] = (minusEncodedVector[halfi] + plusEncodedVector[halfi]) % self.q
-                encodedVector[2*halfi + 1] = (-plusEncodedVector[halfi] + self.q) % self.q
+                encodedVector[2 * halfi] = (minusEncodedVector[halfi] + plusEncodedVector[halfi]) % self.q
+                encodedVector[2 * halfi + 1] = (-plusEncodedVector[halfi] + self.q) % self.q
 
             return (encodedVector, next_uIndex, next_informationVectorIndex)
 
-    def recursiveListDecode(self, informationList, uIndex, informationVectorIndex, xVectorDistributionList, xyVectorDistributionList=None, marginalizedUProbs=None, inListSize=1, maxListSize=1):
+    def recursiveListDecode(self, informationList, uIndex, informationVectorIndex, xVectorDistributionList,
+                            xyVectorDistributionList=None, marginalizedUProbs=None, inListSize=1, maxListSize=1):
         """Encode/decode according to supplied vector distributions
 
         Args:
@@ -303,7 +329,7 @@ class QaryPolarEncoderDecoder:
         Returns:
             (encodedVector, next_uIndex, next_informationVectorIndex): the recursive encoding of the relevant part of the information vector, as well as updated values for the parameters uIndex and informationVectorIndex
         """
-        assert(inListSize <= maxListSize)
+        assert (inListSize <= maxListSize)
         segmentSize = len(xVectorDistributionList[0])
 
         if segmentSize == 1:
@@ -313,9 +339,9 @@ class QaryPolarEncoderDecoder:
                     information = informationList[i]
                     for s in range(self.q):
                         if s > 0:
-                            informationList[s*inListSize + i] = information  # branch the paths q times
-                        informationList[s*inListSize + i][informationVectorIndex] = s
-                        encodedVectorList[s*inListSize + i][0] = s
+                            informationList[s * inListSize + i] = information  # branch the paths q times
+                        informationList[s * inListSize + i][informationVectorIndex] = s
+                        encodedVectorList[s * inListSize + i][0] = s
                 # marginalizedVector = xyVectorDistribution.calcMarginalizedProbabilities()
                 # information[informationVectorIndex] = np.argmax(marginalizedVector)
                 # encodedVector[0] = information[informationVectorIndex]
@@ -328,7 +354,7 @@ class QaryPolarEncoderDecoder:
                     for i in range(inListSize):
                         marginalizedVector = xyVectorDistributionList[i].calcMarginalizedProbabilities()
                         for s in range(self.q):
-                            probs[s*inListSize + i] = marginalizedVector[s]
+                            probs[s * inListSize + i] = marginalizedVector[s]
                     newListSize = min(np.count_nonzero(probs), maxListSize)
                     indices_to_keep = np.argpartition(probs, -newListSize)[-newListSize:]
                     original_indices_map = indices_to_keep % inListSize
@@ -357,7 +383,8 @@ class QaryPolarEncoderDecoder:
             #     marginalizedVector = vectorDistribution.calcMarginalizedProbabilities()
             #     marginalizedUProbs.append(marginalizedVector)
 
-            return (informationList, encodedVectorList, next_uIndex, next_informationVectorIndex, newListSize, original_indices_map)
+            return (informationList, encodedVectorList, next_uIndex, next_informationVectorIndex, newListSize,
+                    original_indices_map)
         else:
             xMinusVectorDistributionList = []
             xyMinusVectorDistributionList = []
@@ -370,7 +397,11 @@ class QaryPolarEncoderDecoder:
                 xyMinusVectorDistribution.normalize()
                 xyMinusVectorDistributionList.append(xyMinusVectorDistribution)
 
-            (minusInformationList, minusEncodedVectorList, next_uIndex, next_informationVectorIndex, minusListSize, minusOriginalIndicesMap) = self.recursiveListDecode(informationList, uIndex, informationVectorIndex, xMinusVectorDistributionList, xyMinusVectorDistributionList, marginalizedUProbs, inListSize, maxListSize)
+            (minusInformationList, minusEncodedVectorList, next_uIndex, next_informationVectorIndex, minusListSize,
+             minusOriginalIndicesMap) = self.recursiveListDecode(informationList, uIndex, informationVectorIndex,
+                                                                 xMinusVectorDistributionList,
+                                                                 xyMinusVectorDistributionList, marginalizedUProbs,
+                                                                 inListSize, maxListSize)
 
             xPlusVectorDistributionList = []
             xyPlusVectorDistributionList = []
@@ -387,7 +418,11 @@ class QaryPolarEncoderDecoder:
 
             uIndex = next_uIndex
             informationVectorIndex = next_informationVectorIndex
-            (plusInformationList, plusEncodedVectorList, next_uIndex, next_informationVectorIndex, plusListSize, plusOriginalIndicesMap) = self.recursiveListDecode(minusInformationList, uIndex, informationVectorIndex, xPlusVectorDistributionList, xyPlusVectorDistributionList, marginalizedUProbs, minusListSize, maxListSize)
+            (plusInformationList, plusEncodedVectorList, next_uIndex, next_informationVectorIndex, plusListSize,
+             plusOriginalIndicesMap) = self.recursiveListDecode(minusInformationList, uIndex, informationVectorIndex,
+                                                                xPlusVectorDistributionList,
+                                                                xyPlusVectorDistributionList, marginalizedUProbs,
+                                                                minusListSize, maxListSize)
 
             newListSize = plusListSize
 
@@ -397,12 +432,14 @@ class QaryPolarEncoderDecoder:
             for i in range(newListSize):
                 minusI = plusOriginalIndicesMap[i]
                 for halfi in range(halfLength):
-                    encodedVectorList[i][2*halfi] = (minusEncodedVectorList[minusI][halfi] + plusEncodedVectorList[i][halfi]) % self.q
-                    encodedVectorList[i][2*halfi + 1] = (-plusEncodedVectorList[i][halfi] + self.q) % self.q
+                    encodedVectorList[i][2 * halfi] = (minusEncodedVectorList[minusI][halfi] + plusEncodedVectorList[i][
+                        halfi]) % self.q
+                    encodedVectorList[i][2 * halfi + 1] = (-plusEncodedVectorList[i][halfi] + self.q) % self.q
 
             originalIndicesMap = minusOriginalIndicesMap[plusOriginalIndicesMap]
 
-            return (plusInformationList, encodedVectorList, next_uIndex, next_informationVectorIndex, newListSize, originalIndicesMap)
+            return (plusInformationList, encodedVectorList, next_uIndex, next_informationVectorIndex, newListSize,
+                    originalIndicesMap)
 
     def calculate_syndrome_and_complement(self, u_message):
         x_message = polarTransformOfQudits(self.q, u_message)
@@ -443,7 +480,6 @@ class QaryPolarEncoderDecoder:
         #
         # (decodedInformation, decodedVector) = enc_dec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check_value)
 
-
         x_b = np.mod(np.sum(b, polarTransformOfQudits(self.q, w)), self.q)
         u_b = self.decode(x_b, list_size=list_size, check_value=check_value, encoding_matrix=check_matrix)
         b_key = self.get_message_info_bits(u_b)
@@ -455,7 +491,9 @@ class QaryPolarEncoderDecoder:
         b_key = self.decode(xVectorDistribution, make_xyVectorDistribution(b))
         return a_key, b_key
 
-def ir2Simulation(q, length, make_xVectorDistribution, simulateChannel, make_xyVectorDistribution, numberOfTrials, frozenSet, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
+
+def ir2Simulation(q, length, make_xVectorDistribution, simulateChannel, make_xyVectorDistribution, numberOfTrials,
+                  frozenSet, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
     badKeys = 0
     xVectorDistribution = make_xVectorDistribution()
     encDec = QaryPolarEncoderDecoder(q, length, frozenSet, commonRandomnessSeed)
@@ -481,7 +519,10 @@ def ir2Simulation(q, length, make_xVectorDistribution, simulateChannel, make_xyV
 
     print("Error probability = ", badKeys, "/", numberOfTrials, " = ", badKeys / numberOfTrials)
 
-def encodeDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, frozenSet, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
+
+def encodeDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, simulateChannel,
+                           make_xyVectorDistribution, numberOfTrials, frozenSet, commonRandomnessSeed=1,
+                           randomInformationSeed=1, verbosity=0):
     """Run a polar encoder and a corresponding decoder (SC, not SCL)
 
     Args:
@@ -535,9 +576,12 @@ def encodeDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, s
                 s += "\nreceived word:\n" + str(receivedWord)
                 print(s)
 
-    print( "Error probability = ", misdecodedWords, "/", numberOfTrials, " = ", misdecodedWords/numberOfTrials )
+    print("Error probability = ", misdecodedWords, "/", numberOfTrials, " = ", misdecodedWords / numberOfTrials)
 
-def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, frozenSet, maxListSize, checkSize, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
+
+def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, simulateChannel,
+                               make_xyVectorDistribution, numberOfTrials, frozenSet, maxListSize, checkSize,
+                               commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
     """Run a polar encoder and a corresponding decoder (SC, not SCL)
 
     Args:
@@ -582,7 +626,8 @@ def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codewor
         check_matrix = np.random.choice(range(q), (encDec.k, checkSize))
         check_value = np.matmul(information, check_matrix) % q
 
-        (decodedInformation, decodedVector) = encDec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check_value)
+        (decodedInformation, decodedVector) = encDec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize,
+                                                                check_matrix, check_value)
 
         if not np.array_equal(information, decodedInformation):
             misdecodedWords += 1
@@ -594,9 +639,12 @@ def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codewor
                 s += "\nreceived word:\n" + str(receivedWord)
                 print(s)
 
-    print( "Error probability = ", misdecodedWords, "/", numberOfTrials, " = ", misdecodedWords/numberOfTrials )
+    print("Error probability = ", misdecodedWords, "/", numberOfTrials, " = ", misdecodedWords / numberOfTrials)
 
-def genieEncodeDecodeSimulation(length, make_xVectorDistribution, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, errorUpperBoundForFrozenSet, genieSeed, trustXYProbs=True, filename=None):
+
+def genieEncodeDecodeSimulation(length, make_xVectorDistribution, make_codeword, simulateChannel,
+                                make_xyVectorDistribution, numberOfTrials, errorUpperBoundForFrozenSet, genieSeed,
+                                trustXYProbs=True, filename=None):
     """Run a genie encoder and corresponding decoder, and return frozen set
 
     Args:
@@ -642,15 +690,16 @@ def genieEncodeDecodeSimulation(length, make_xVectorDistribution, make_codeword,
 
         xyVectorDistribution = make_xyVectorDistribution(receivedWord)
 
-        (decodedVector, PevecTemp, HdecvecTemp) = encDec.genieSingleDecodeSimulation(xVectorDistribution, xyVectorDistribution, trustXYProbs)
+        (decodedVector, PevecTemp, HdecvecTemp) = encDec.genieSingleDecodeSimulation(xVectorDistribution,
+                                                                                     xyVectorDistribution, trustXYProbs)
 
-        if  TVvec is None:
+        if TVvec is None:
             TVvec = TVvecTemp
             Pevec = PevecTemp
             HEncvec = HencvecTemp
             HDecvec = HdecvecTemp
         else:
-            assert( len(TVvec) == len(TVvecTemp) )
+            assert (len(TVvec) == len(TVvecTemp))
             TVvec = np.add(TVvec, TVvecTemp)
             Pevec = np.add(Pevec, PevecTemp)
             HEncvec = np.add(HEncvec, HencvecTemp)
@@ -665,18 +714,18 @@ def genieEncodeDecodeSimulation(length, make_xVectorDistribution, make_codeword,
         HDecvec /= numberOfTrials
         HDecsum = np.sum(HDecvec)
 
-    print( "TVVec = ", TVvec )
-    print( "pevec = ", Pevec )
-    print( "HEncvec = ", HEncvec )
+    print("TVVec = ", TVvec)
+    print("pevec = ", Pevec)
+    print("HEncvec = ", HEncvec)
     if trustXYProbs:
-        print( "HDecvec = ", HDecvec )
-    print( "Normalized HEncsum = ",  HEncsum /len(HEncvec) )
+        print("HDecvec = ", HDecvec)
+    print("Normalized HEncsum = ", HEncsum / len(HEncvec))
     if trustXYProbs:
-        print( "Normalized HDecsum = ", HDecsum /len(HDecvec) )
+        print("Normalized HDecsum = ", HDecsum / len(HDecvec))
 
     frozenSet = frozenSetFromTVAndPe(TVvec, Pevec, errorUpperBoundForFrozenSet)
-    print( "code rate = ", (len(TVvec) - len(frozenSet)) /  len(codeword) )
-    print( "codeword length = ", len(codeword) )
+    print("code rate = ", (len(TVvec) - len(frozenSet)) / len(codeword))
+    print("codeword length = ", len(codeword))
 
     if filename is not None:
         f = open(filename, "w")
@@ -693,25 +742,26 @@ def genieEncodeDecodeSimulation(length, make_xVectorDistribution, make_codeword,
         f.write(s)
 
         for i in range(len(TVvec)):
-            s = "*** " + str(i) + " " + str((TVvec[i] + Pevec[i]) * numberOfTrials) +  "\n"
+            s = "*** " + str(i) + " " + str((TVvec[i] + Pevec[i]) * numberOfTrials) + "\n"
             f.write(s)
 
         f.close()
 
     return frozenSet
 
-def polarTransformOfQudits( q, xvec ):
+
+def polarTransformOfQudits(q, xvec):
     # print("xvec =", xvec)
     if len(xvec) == 1:
         return xvec
     else:
-        assert( len(xvec) % 2 == 0 )
+        assert (len(xvec) % 2 == 0)
 
         vfirst = []
         vsecond = []
         for i in range((len(xvec) // 2)):
-            vfirst.append( (xvec[2*i] + xvec[2*i+1]) % q )
-            vsecond.append( (q - xvec[2*i+1]) % q )
+            vfirst.append((xvec[2 * i] + xvec[2 * i + 1]) % q)
+            vsecond.append((q - xvec[2 * i + 1]) % q)
 
         ufirst = polarTransformOfQudits(q, vfirst)
         usecond = polarTransformOfQudits(q, vsecond)
@@ -737,11 +787,11 @@ def frozenSetFromTVAndPe(TVvec, Pevec, errorUpperBoundForFrozenSet):
         else:
             break
 
-    for j in range(indexInSortedIndicesArray+1,  len(TVPlusPeVec)):
+    for j in range(indexInSortedIndicesArray + 1, len(TVPlusPeVec)):
         i = sortedIndices[j]
         frozenSet.add(i)
 
-    print( "frozen set =", frozenSet )
-    print( "fraction of non-frozen indices =", 1.0 - len(frozenSet) / len(TVPlusPeVec) )
+    print("frozen set =", frozenSet)
+    print("fraction of non-frozen indices =", 1.0 - len(frozenSet) / len(TVPlusPeVec))
 
     return frozenSet

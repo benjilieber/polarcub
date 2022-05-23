@@ -12,11 +12,13 @@ def make_xVectorDistribution_fromQaryMemorylessDistribution(q, xyDistribution, l
         xDistribution.probs = [xyDistribution.calcXMarginals()]
         xVectorDistribution = xDistribution.makeQaryMemorylessVectorDistribution(length, None)
         return xVectorDistribution
+
     return make_xVectorDistribution
 
 
 def make_codeword_noprocessing(encodedVector):
     return encodedVector
+
 
 def simulateChannel_fromQaryMemorylessDistribution(xyDistribution):
     def simulateChannel(codeword):
@@ -30,16 +32,17 @@ def simulateChannel_fromQaryMemorylessDistribution(xyDistribution):
             probSum = 0.0
 
             for y in range(len(xyDistribution.probs)):
-                if probSum + xyDistribution.probXGivenY(x,y) >= rand:
+                if probSum + xyDistribution.probXGivenY(x, y) >= rand:
                     receivedWord.append(y)
                     # print("x = ", x, ", y = ", y, " probXGivenY(x,y) = ", xyDistribution.probXGivenY(x,y), ", rand = ", rand)
                     break
                 else:
-                    probSum += xyDistribution.probXGivenY(x,y)
+                    probSum += xyDistribution.probXGivenY(x, y)
 
         return receivedWord
 
     return simulateChannel
+
 
 def make_xyVectorDistribution_fromQaryMemorylessDistribution(xyDistribution):
     def make_xyVectrorDistribution(receivedWord):
@@ -52,7 +55,9 @@ def make_xyVectorDistribution_fromQaryMemorylessDistribution(xyDistribution):
             xyVectorDistribution = xyDistribution.makeQaryMemorylessVectorDistribution(length, receivedWord)
 
         return xyVectorDistribution
+
     return make_xyVectrorDistribution
+
 
 def test(q, listDecode=False, maxListSize=None, crcSize=None):
     print("q = " + str(q))
@@ -81,14 +86,18 @@ def test(q, listDecode=False, maxListSize=None, crcSize=None):
 
     if not listDecode:
         QaryPolarEncoderDecoder.encodeDecodeSimulation(q, N, make_xVectorDistribution, make_codeword, simulateChannel,
-                                                       make_xyVectorDistribution, numberOfTrials, frozenSet, verbosity=0)
+                                                       make_xyVectorDistribution, numberOfTrials, frozenSet,
+                                                       verbosity=0)
     else:
-        QaryPolarEncoderDecoder.encodeListDecodeSimulation(q, N, make_xVectorDistribution, make_codeword, simulateChannel,
-                                                           make_xyVectorDistribution, numberOfTrials, frozenSet, maxListSize, crcSize, verbosity=0)
+        QaryPolarEncoderDecoder.encodeListDecodeSimulation(q, N, make_xVectorDistribution, make_codeword,
+                                                           simulateChannel,
+                                                           make_xyVectorDistribution, numberOfTrials, frozenSet,
+                                                           maxListSize, crcSize, verbosity=0)
 
     # # trustXYProbs = False
     # trustXYProbs = True
     # PolarEncoderDecoder.genieEncodeDecodeSimulation(N, make_xVectorDistribuiton, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, upperBoundOnErrorProbability, trustXYProbs)
+
 
 def test_ir2(q):
     p = 0.99
@@ -114,8 +123,9 @@ def test_ir2(q):
     make_xyVectorDistribution = make_xyVectorDistribution_fromQaryMemorylessDistribution(xyDistribution)
 
     QaryPolarEncoderDecoder.ir2Simulation(q, N, make_xVectorDistribution, simulateChannel,
-                                       make_xyVectorDistribution, numberOfTrials, frozenSet,
-                                       verbosity=1)
+                                          make_xyVectorDistribution, numberOfTrials, frozenSet,
+                                          verbosity=1)
+
 
 # test(2)
 # test(3)

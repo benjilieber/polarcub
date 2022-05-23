@@ -1,18 +1,21 @@
 import numpy as np
+
 import VectorDistribution
+
 
 class QaryMemorylessVectorDistribution(VectorDistribution.VectorDistribution):
 
     def __init__(self, q, length):
         assert (q > 1)
         self.q = q
-        assert ( length > 0 )
-        self.probs = np.empty((length, q), dtype=np.float)  # so, probs[i][x] equals the probability of x transmitted or received at time i
+        assert (length > 0)
+        self.probs = np.empty((length, q),
+                              dtype=np.float)  # so, probs[i][x] equals the probability of x transmitted or received at time i
         self.probs[:] = np.nan
         self.length = length
 
     def minusTransform(self):
-        assert( self.length % 2 == 0 )
+        assert (self.length % 2 == 0)
         halfLength = self.length // 2
 
         newVector = QaryMemorylessVectorDistribution(self.q, halfLength)
@@ -27,7 +30,7 @@ class QaryMemorylessVectorDistribution(VectorDistribution.VectorDistribution):
         return newVector
 
     def plusTransform(self, uminusDecisions):
-        assert( self.length % 2 == 0 )
+        assert (self.length % 2 == 0)
         halfLength = self.length // 2
 
         newVector = QaryMemorylessVectorDistribution(self.q, halfLength)
@@ -48,7 +51,7 @@ class QaryMemorylessVectorDistribution(VectorDistribution.VectorDistribution):
         return self.length
 
     def calcMarginalizedProbabilities(self):
-        assert( len(self) == 1 )
+        assert (len(self) == 1)
 
         marginalizedProbs = np.empty(self.q)
         marginalizedProbs[:] = np.nan
@@ -79,7 +82,7 @@ class QaryMemorylessVectorDistribution(VectorDistribution.VectorDistribution):
             normalization = self.calcNormalizationVector()
         for i in range(self.length):
             t = normalization[i]
-            assert( t >= 0 )
+            assert (t >= 0)
             if t == 0:
                 t = 1
 
