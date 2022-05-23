@@ -15,6 +15,7 @@ class uIndexType(Enum):
 class QaryPolarEncoderDecoder:
     def __init__(self, q, length, frozenSet, commonRandomnessSeed):
         """ If rngSeed is set to -1, then we freeze all frozen bits to zero.
+
         Args:
             q (int): the base alphabet size
             length (int): the length of the U vector
@@ -26,7 +27,6 @@ class QaryPolarEncoderDecoder:
         self.frozenSet = frozenSet
         self.infoSet = set([i for i in range(length) if i not in self.frozenSet])
         self.length = length
-
         self.k = length - len(self.frozenSet)
         self.frozenOrInformation = self.initFrozenOrInformation()
         self.randomlyGeneratedNumbers = self.initRandomlyGeneratedNumbers()
@@ -48,12 +48,11 @@ class QaryPolarEncoderDecoder:
         self.randomlyGeneratedNumbers = self.initRandomlyGeneratedNumbers()
 
     def encode(self, xVectorDistribution, information):
-        """Encode k information bits according to a-priori input distribution
+        """Encode k information bits according to a-priori input distribution.
 
         Args:
             xVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector with a-priori entries for P(X=j) for all j in F_q
-
-            information (numpy array of Int64): the k information bits to encode
+            information (numpy array of Int64): the k information bits to encode.
 
         Returns:
             The encoded vector (reverse polar transform of the U)
@@ -74,11 +73,10 @@ class QaryPolarEncoderDecoder:
         return encodedVector
 
     def decode(self, xVectorDistribution, xyVectorDistribution):
-        """Decode k information bits according to a-priori input distribution and a-posteriori input distribution
+        """Decode k information bits according to a-priori input distribution and a-posteriori input distribution.
 
         Args:
             xVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector with a-priori entries for P(X=j) for each j in F_q.
-
             xyVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector with a-posteriori entries for P(X=j) for each j in F_q. That is, entry i contains P(X=j,Y=y_i) for each j in F_q.
 
         Returns:
@@ -107,9 +105,7 @@ class QaryPolarEncoderDecoder:
 
         Args:
             xVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector with a-priori entries for P(X=j) for each j in F_q.
-
             xyVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector with a-posteriori entries for P(X=j) for each j in F_q. That is, entry i contains P(X=j,Y=y_i) for each j in F_q.
-
             maxListSize: maximum list size during list-decoding
 
         Returns:
@@ -145,9 +141,7 @@ class QaryPolarEncoderDecoder:
         """Pick up statistics of a single decoding run
         Args:
             xVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector with a-priori entries for P(X=j) for each j in F_q
-
             xyVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector with a-posteriori entries for P(X=j) for each j in F_q. That is, entry i contains P(X=j,Y=y_i) for each j in F_q.
-
             trustXYProbs (bool): Do we trust the probabilities of U_i=s for each s in F_q given past U and all Y (we usually should), or don't we (in case we have guard bands, which can be parsed wrong, and then result in garbage probs).
 
         Returns:
@@ -161,15 +155,12 @@ class QaryPolarEncoderDecoder:
 
         assert (len(xVectorDistribution) == self.length)
 
-        # print(xyVectorDistribution)
-
         (decodedVector, next_uIndex, next_informationVectorIndex) = self.recursiveEncodeDecode(information, uIndex,
                                                                                                informationVectorIndex,
                                                                                                xVectorDistribution,
                                                                                                xyVectorDistribution,
                                                                                                marginalizedUProbs)
 
-        # print( decodedVector, marginalizedUProbs )
         assert (next_uIndex == len(decodedVector) == len(xVectorDistribution))
         assert (next_informationVectorIndex == len(information) == 0)
         assert (len(marginalizedUProbs) == self.length)
@@ -184,7 +175,8 @@ class QaryPolarEncoderDecoder:
         return (decodedVector, Pevec, Hvec)
 
     def genieSingleEncodeSimulation(self, xVectorDistribution):
-        """Pick up statistics of a single encoding run
+        """Pick up statistics of a single encoding run.
+
         Args:
             xVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector with a-priori entries for P(X=0) and P(X=1)
 
@@ -206,7 +198,6 @@ class QaryPolarEncoderDecoder:
                                                                                                xVectorDistribution,
                                                                                                None, marginalizedUProbs)
 
-        # print( encodedVector, marginalizedUProbs )
         assert (next_uIndex == len(encodedVector) == len(xVectorDistribution))
         assert (next_informationVectorIndex == len(information) == 0)
         assert (len(marginalizedUProbs) == self.length)
@@ -222,19 +213,14 @@ class QaryPolarEncoderDecoder:
 
     def recursiveEncodeDecode(self, information, uIndex, informationVectorIndex, xVectorDistribution,
                               xyVectorDistribution=None, marginalizedUProbs=None):
-        """Encode/decode according to supplied vector distributions
+        """Encode/decode according to supplied vector distributions.
 
         Args:
             information (numpy array of Int64): an array of information bits to either read from when encoding or write to when decoding
-
             uIndex (int): the first relevant index in the polar transformed U vector of the *whole* codeword (non-recursive)
-
             informationVectorIndex (int): the first relevant index in the information vector associated with the *whole* codeword (non-recursive)
-
             xVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector (whose length is a function of the recursion depth) with a-priori entries for P(X=j) for all j in F_q
-
             xyVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector (whose length is a function of the recursion depth) with a-posteriori entries for P(X=j) for all j in F_q. A None value means we are encoding.
-
             marginalizedUProbs (empty array, or None): If not None, we populate (return) this array so that if xyVectorDistribution is None (encoding), then marginalizedUProbs[i][x] = P(U_i=x|U_0^{i-1} = \hat{u}_0^{i-1}). Otherwise, marginalizedUProbs[i][x] = P(U_i=x|U_0^{i-1} = \hat{u}_0^{i-1}, Y_0^{N-1} = y_0^{N-1}). For genie decoding, we will have \hat{u}_i = u_i, as the frozen set contains all indices.
 
         Returns:
@@ -311,19 +297,14 @@ class QaryPolarEncoderDecoder:
 
     def recursiveListDecode(self, informationList, uIndex, informationVectorIndex, xVectorDistributionList,
                             xyVectorDistributionList=None, marginalizedUProbs=None, inListSize=1, maxListSize=1):
-        """Encode/decode according to supplied vector distributions
+        """Encode/decode according to supplied vector distributions.
 
         Args:
             information (numpy array of Int64): an array of information bits to either read from when encoding or write to when decoding
-
             uIndex (int): the first relevant index in the polar transformed U vector of the *whole* codeword (non-recursive)
-
             informationVectorIndex (int): the first relevant index in the information vector associated with the *whole* codeword (non-recursive)
-
             xVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector (whose length is a function of the recursion depth) with a-priori entries for P(X=j) for all j in F_q
-
             xyVectorDistribution (VectorDistribution): in a memoryless setting, this is essentially a vector (whose length is a function of the recursion depth) with a-posteriori entries for P(X=j) for all j in F_q. A None value means we are encoding.
-
             marginalizedUProbs (empty array, or None): If not None, we populate (return) this array so that if xyVectorDistribution is None (encoding), then marginalizedUProbs[i][x] = P(U_i=x|U_0^{i-1} = \hat{u}_0^{i-1}). Otherwise, marginalizedUProbs[i][x] = P(U_i=x|U_0^{i-1} = \hat{u}_0^{i-1}, Y_0^{N-1} = y_0^{N-1}). For genie decoding, we will have \hat{u}_i = u_i, as the frozen set contains all indices.
 
         Returns:
@@ -342,9 +323,6 @@ class QaryPolarEncoderDecoder:
                             informationList[s * inListSize + i] = information  # branch the paths q times
                         informationList[s * inListSize + i][informationVectorIndex] = s
                         encodedVectorList[s * inListSize + i][0] = s
-                # marginalizedVector = xyVectorDistribution.calcMarginalizedProbabilities()
-                # information[informationVectorIndex] = np.argmax(marginalizedVector)
-                # encodedVector[0] = information[informationVectorIndex]
                 newListSize = inListSize * self.q
                 next_uIndex = uIndex + 1
                 next_informationVectorIndex = informationVectorIndex + 1
@@ -523,27 +501,18 @@ def ir2Simulation(q, length, make_xVectorDistribution, simulateChannel, make_xyV
 def encodeDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, simulateChannel,
                            make_xyVectorDistribution, numberOfTrials, frozenSet, commonRandomnessSeed=1,
                            randomInformationSeed=1, verbosity=0):
-    """Run a polar encoder and a corresponding decoder (SC, not SCL)
+    """Run a polar encoder and a corresponding decoder (SC, not SCL).
 
     Args:
        q: the base alphabet size
-
        length (int): the number of indices in the polar transformed vector
-
        make_xVectorDistribution (function): return xVectorDistribution, and takes no arguments
-
        make_codeword (function): make a codeword out of the encodedVector (for example, by doing nothing, or by adding guard bands)
-
        simulateChannel (function): transforms a codeword to a received word, using the current state of the random number generator
-
        make_xyVectorDistribution (function): return xyVectorDistribution, as a function of the received word
-
        frozenSet (set): the set of (dynamically) frozen indices
-
        commonRandomnessSeed (int): the seed used for defining the encoder/decoder common randomness
-
        randomInformationSeed (int): the seed used to create the random information to be encoded
-
     """
 
     misdecodedWords = 0
@@ -586,23 +555,14 @@ def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codewor
 
     Args:
        q: the base alphabet size
-
        length (int): the number of indices in the polar transformed vector
-
        make_xVectorDistribution (function): return xVectorDistribution, and takes no arguments
-
        make_codeword (function): make a codeword out of the encodedVector (for example, by doing nothing, or by adding guard bands)
-
        simulateChannel (function): transforms a codeword to a received word, using the current state of the random number generator
-
        make_xyVectorDistribution (function): return xyVectorDistribution, as a function of the received word
-
        frozenSet (set): the set of (dynamically) frozen indices
-
        commonRandomnessSeed (int): the seed used for defining the encoder/decoder common randomness
-
        randomInformationSeed (int): the seed used to create the random information to be encoded
-
     """
 
     misdecodedWords = 0
@@ -645,25 +605,17 @@ def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codewor
 def genieEncodeDecodeSimulation(length, make_xVectorDistribution, make_codeword, simulateChannel,
                                 make_xyVectorDistribution, numberOfTrials, errorUpperBoundForFrozenSet, genieSeed,
                                 trustXYProbs=True, filename=None):
-    """Run a genie encoder and corresponding decoder, and return frozen set
+    """Run a genie encoder and corresponding decoder, and return frozen set.
 
     Args:
        length (int): the number of indices in the polar transformed vector
-
        make_xVectorDistribution (function): return xVectorDistribution, and takes no arguments
-
        make_codeword (function): make a codeword out of the encodedVector (for example, by doing nothing, or by adding guard bands)
-
        simulateChannel (function): transforms a codeword to a received word, using the current state of the random number generator
-
        make_xyVectorDistribution (function): return xyVectorDistribution, as a function of the received word
-
        numberOfTrials (int): number of Monte-Carlo simulations
-
        errorUpperBoundForFrozenSet (float): choose a frozen set that will result in decoding error not more than this variable
-
        genieSeed (int): the seed used by the genie to have different encoding/decoding common randomness in each run
-
        trustXYProbs (bool): Do we trust the probabilities of U_i=j for all j in F_q given past U and all Y (we usually should), or don't we (in case we have guard bands, which can be parsed wrong, and then result in garbage probs).
     """
 
@@ -685,8 +637,6 @@ def genieEncodeDecodeSimulation(length, make_xVectorDistribution, make_codeword,
         codeword = make_codeword(encodedVector)
 
         receivedWord = simulateChannel(codeword)
-
-        # print("codeword = ", codeword, ", receivedWord = ", receivedWord)
 
         xyVectorDistribution = make_xyVectorDistribution(receivedWord)
 
@@ -772,8 +722,6 @@ def polarTransformOfQudits(q, xvec):
 def frozenSetFromTVAndPe(TVvec, Pevec, errorUpperBoundForFrozenSet):
     TVPlusPeVec = np.add(TVvec, Pevec)
     sortedIndices = sorted(range(len(TVPlusPeVec)), key=lambda k: TVPlusPeVec[k])
-
-    # print( sortedIndices )
 
     errorSum = 0.0
     indexInSortedIndicesArray = -1

@@ -72,8 +72,8 @@ class Edge():
     def getKey(self):
         self.sanityCheck()
         return (
-        self.fromVertex.stateId, self.fromVertex.verticalPosInLayer, self.fromVertex.layer, self.toVertex.stateId,
-        self.toVertex.verticalPosInLayer, self.edgeLabel)
+            self.fromVertex.stateId, self.fromVertex.verticalPosInLayer, self.fromVertex.layer, self.toVertex.stateId,
+            self.toVertex.verticalPosInLayer, self.edgeLabel)
 
     def toString(self):
         s = str(self.fromVertex.getKey())
@@ -338,7 +338,7 @@ def buildTrellis_uniformInput_deletion(receivedWord, codewordLength, deletionPro
         for i in range(1 + min(numberOfOnesToAddAtBothEndsOfGuardbands, len(receivedWord))):
             vertex_verticalPosInLayer = i
             vertexProb = scipy.special.comb(numberOfOnesToAddAtBothEndsOfGuardbands, i, exact=True) * (
-                        (1.0 - deletionProb) ** i) * (deletionProb ** (numberOfOnesToAddAtBothEndsOfGuardbands - i))
+                    (1.0 - deletionProb) ** i) * (deletionProb ** (numberOfOnesToAddAtBothEndsOfGuardbands - i))
             trellis.setVertexProb(vertex_stateId, vertex_verticalPosInLayer, vertex_layer, vertexProb)
 
     else:
@@ -370,7 +370,7 @@ def buildTrellis_uniformInput_deletion(receivedWord, codewordLength, deletionPro
             vertex_verticalPosInLayer = i
             j = len(receivedWord) - i
             vertexProb = scipy.special.comb(numberOfOnesToAddAtBothEndsOfGuardbands, j, exact=True) * (
-                        (1.0 - deletionProb) ** j) * (deletionProb ** (numberOfOnesToAddAtBothEndsOfGuardbands - j))
+                    (1.0 - deletionProb) ** j) * (deletionProb ** (numberOfOnesToAddAtBothEndsOfGuardbands - j))
             trellis.setVertexProb(vertex_stateId, vertex_verticalPosInLayer, vertex_layer, vertexProb)
     else:
         # add a single vertex

@@ -263,7 +263,7 @@ class QaryMemorylessDistribution:
 
         if binningToUse == Binning.TalSharovVardy:
             mu = 1.0 / (math.e * (
-                        M / 2))  # mu from the paper by Tal, Sharov, and Vardy, but for simplicity, use the natural logarithm (beta = alpha = 1/e)
+                    M / 2))  # mu from the paper by Tal, Sharov, and Vardy, but for simplicity, use the natural logarithm (beta = alpha = 1/e)
         elif binningToUse == Binning.PeregTal:
             mu, indexOfBorderCell, maxProbOfBorderCell, gamma = self.calcMuForPeregTal(M)
         else:
@@ -388,7 +388,7 @@ class QaryMemorylessDistribution:
             marginalFromNowProb[self.q - 1] = 1.0
             for i in range(self.q - 2, -1, -1):
                 marginalFromNowProb[i] = marginalFromNowProb[i + 1] * (
-                            x_ynew_yold_probs[i][0] + x_ynew_yold_probs[i][1])
+                        x_ynew_yold_probs[i][0] + x_ynew_yold_probs[i][1])
 
             zeroTilNowProb = 1.0
             for x in range(self.q):  # add to newDistribution[ynew][x]
@@ -548,7 +548,7 @@ class QaryMemorylessDistribution:
             for x in range(self.q):
                 if self.probs[yold][x] > 0.0:
                     alphaxy = (cellPosteriorProb[x] / self.probs[yold][x]) * (
-                                self.probs[yold][leadingX] / cellPosteriorProb[leadingX])
+                            self.probs[yold][leadingX] / cellPosteriorProb[leadingX])
                 else:
                     alphaxy = 1.0
 
