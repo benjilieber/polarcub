@@ -24,6 +24,7 @@ class QaryPolarEncoderDecoder:
         self.q = q
         self.commonRandomnessSeed = commonRandomnessSeed
         self.frozenSet = frozenSet
+        self.infoSet = set([i for i in range(length) if i not in self.frozenSet])
         self.length = length
 
         self.k = length - len(self.frozenSet)
@@ -95,9 +96,9 @@ class QaryPolarEncoderDecoder:
         assert( next_uIndex == len(encodedVector) == self.length )
         assert( next_informationVectorIndex == len(information) == self.k )
 
-        return (encodedVector, information)
+        return information
 
-    def listDecode(self, xVectorDistribution, xyVectorDistribution, maxListSize, encoding_matrix, encoding):
+    def listDecode(self, xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check):
         """List-decode k information bits according to a-priori input distribution and a-posteriori input distribution
 
         Args:
@@ -128,8 +129,8 @@ class QaryPolarEncoderDecoder:
         assert(np.count_nonzero(originalIndicesMap) == 0)
 
         for information, encodedVector in zip(informationList, encodedVectorList):
-            curEncoding = np.matmul(information, encoding_matrix) % self.q
-            if np.array_equal(curEncoding, encoding):
+            cur_check = np.matmul(information, check_matrix) % self.q
+            if np.array_equal(cur_check, check):
                 return information, encodedVector
         return informationList[0], encodedVectorList[0]
 
@@ -403,6 +404,83 @@ class QaryPolarEncoderDecoder:
 
             return (plusInformationList, encodedVectorList, next_uIndex, next_informationVectorIndex, newListSize, originalIndicesMap)
 
+    def calculate_syndrome_and_complement(self, u_message):
+        x_message = polarTransformOfQudits(self.q, u_message)
+
+        w = np.copy(x_message)
+        w[np.array(self.infoSet)] = 0
+        w[np.array(self.frozenSet)] *= self._q - 1
+        w[np.array(self.frozenSet)] %= self._q
+
+        u = x_message
+        u[np.array(self.frozenSet)] = 0
+
+        return w, u
+
+    def get_message_info_bits(self, u_message):
+        return u_message[np.array(self.infoSet)]
+
+    def get_message_frozen_bits(self, u_message):
+        return u_message[np.array(self.frozenSet)]
+
+    def ir(self, enc_dec, a, b, list_size, check_size):
+        w, u = self.calculate_syndrome_and_complement(a)
+        a_key = self.get_message_info_bits(u)
+
+        check_matrix = np.random.choice(range(self.q), (enc_dec.k, check_size))
+        check_value = np.matmul(a_key, check_matrix) % self.q
+
+        # information = informationRNG.choices(range(0, q), k=encDec.k)
+        # encodedVector = enc_dec.encode(xVectorDistribution, information)
+        #
+        # codeword = make_codeword(encodedVector)
+        #
+        # receivedWord = simulateChannel(codeword)
+        # xyVectorDistribution = make_xyVectorDistribution(receivedWord)
+        #
+        # check_matrix = np.random.choice(range(q), (encDec.k, checkSize))
+        # check_value = np.matmul(information, check_matrix) % q
+        #
+        # (decodedInformation, decodedVector) = enc_dec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check_value)
+
+
+        x_b = np.mod(np.sum(b, polarTransformOfQudits(self.q, w)), self.q)
+        u_b = self.decode(x_b, list_size=list_size, check_value=check_value, encoding_matrix=check_matrix)
+        b_key = self.get_message_info_bits(u_b)
+
+        return a_key, b_key
+
+    def ir2(self, a, b, xVectorDistribution, make_xyVectorDistribution):
+        a_key = polarTransformOfQudits(self.q, a)[np.array(list(self.infoSet))]
+        b_key = self.decode(xVectorDistribution, make_xyVectorDistribution(b))
+        return a_key, b_key
+
+def ir2Simulation(q, length, make_xVectorDistribution, simulateChannel, make_xyVectorDistribution, numberOfTrials, frozenSet, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
+    badKeys = 0
+    xVectorDistribution = make_xVectorDistribution()
+    encDec = QaryPolarEncoderDecoder(q, length, frozenSet, commonRandomnessSeed)
+    informationRNG = random.Random(randomInformationSeed)
+
+    # Note that we set a random seed, which is in charge of both setting the information bits as well as the channel output.
+    for t in range(numberOfTrials):
+        a = informationRNG.choices(range(0, q), k=encDec.length)
+        b = simulateChannel(a)
+
+        a_key, b_key = encDec.ir2(a, b, xVectorDistribution, make_xyVectorDistribution)
+
+        if not np.array_equal(a_key, b_key):
+            badKeys += 1
+            if verbosity > 0:
+                s = "Bad key"
+                s += "Alice's key:\n" + str(a_key)
+                s += "\nBob's key:\n" + str(b_key)
+                print(s)
+        else:
+            if verbosity > 0:
+                print("Good key")
+
+    print("Error probability = ", badKeys, "/", numberOfTrials, " = ", badKeys / numberOfTrials)
+
 def encodeDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, frozenSet, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
     """Run a polar encoder and a corresponding decoder (SC, not SCL)
 
@@ -459,7 +537,7 @@ def encodeDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, s
 
     print( "Error probability = ", misdecodedWords, "/", numberOfTrials, " = ", misdecodedWords/numberOfTrials )
 
-def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, frozenSet, maxListSize, crcSize, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
+def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, frozenSet, maxListSize, checkSize, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
     """Run a polar encoder and a corresponding decoder (SC, not SCL)
 
     Args:
@@ -501,10 +579,10 @@ def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codewor
         receivedWord = simulateChannel(codeword)
         xyVectorDistribution = make_xyVectorDistribution(receivedWord)
 
-        encoding_matrix = np.random.choice(range(q), (encDec.k, crcSize))
-        encoding = np.matmul(information, encoding_matrix) % q
+        check_matrix = np.random.choice(range(q), (encDec.k, checkSize))
+        check_value = np.matmul(information, check_matrix) % q
 
-        (decodedInformation, decodedVector) = encDec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize, encoding_matrix, encoding)
+        (decodedInformation, decodedVector) = encDec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check_value)
 
         if not np.array_equal(information, decodedInformation):
             misdecodedWords += 1
@@ -633,7 +711,7 @@ def polarTransformOfQudits( q, xvec ):
         vsecond = []
         for i in range((len(xvec) // 2)):
             vfirst.append( (xvec[2*i] + xvec[2*i+1]) % q )
-            vsecond.append( xvec[2*i+1] )
+            vsecond.append( (q - xvec[2*i+1]) % q )
 
         ufirst = polarTransformOfQudits(q, vfirst)
         usecond = polarTransformOfQudits(q, vsecond)

@@ -90,6 +90,36 @@ def test(q, listDecode=False, maxListSize=None, crcSize=None):
     # trustXYProbs = True
     # PolarEncoderDecoder.genieEncodeDecodeSimulation(N, make_xVectorDistribuiton, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, upperBoundOnErrorProbability, trustXYProbs)
 
+def test_ir2(q):
+    p = 0.99
+    L = 100
+    n = 5
+    N = 2 ** n
+
+    upperBoundOnErrorProbability = 0.1
+
+    xDistribution = None
+    xyDistribution = QaryMemorylessDistribution.makeQSC(q, p)
+
+    frozenSet = QaryMemorylessDistribution.calcFrozenSet_degradingUpgrading(n, L, upperBoundOnErrorProbability,
+                                                                            xDistribution, xyDistribution)
+
+    # print("Rate = ", N - len(frozenSet), "/", N, " = ", (N - len(frozenSet)) / N)
+
+    numberOfTrials = 200
+
+    make_xVectorDistribution = make_xVectorDistribution_fromQaryMemorylessDistribution(q, xyDistribution, N)
+    make_codeword = make_codeword_noprocessing
+    simulateChannel = simulateChannel_fromQaryMemorylessDistribution(xyDistribution)
+    make_xyVectorDistribution = make_xyVectorDistribution_fromQaryMemorylessDistribution(xyDistribution)
+
+    QaryPolarEncoderDecoder.ir2Simulation(q, N, make_xVectorDistribution, simulateChannel,
+                                       make_xyVectorDistribution, numberOfTrials, frozenSet,
+                                       verbosity=1)
+
 # test(2)
 # test(3)
-test(3, listDecode=True, maxListSize=1, crcSize=1)
+# test(3, listDecode=True, maxListSize=1, crcSize=1)
+# test(3, listDecode=True, maxListSize=9, crcSize=4)
+test_ir2(2)
+test_ir2(3)
