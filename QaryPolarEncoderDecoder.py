@@ -100,7 +100,7 @@ class QaryPolarEncoderDecoder:
 
         return information
 
-    def listDecode(self, xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check):
+    def listDecode(self, xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check_value):
         """List-decode k information bits according to a-priori input distribution and a-posteriori input distribution
 
         Args:
@@ -131,11 +131,11 @@ class QaryPolarEncoderDecoder:
         assert (len(originalIndicesMap) == finalListSize)
         assert (np.count_nonzero(originalIndicesMap) == 0)
 
-        for information, encodedVector in zip(informationList, encodedVectorList):
+        for information in informationList:
             cur_check = np.matmul(information, check_matrix) % self.q
-            if np.array_equal(cur_check, check):
-                return information, encodedVector
-        return informationList[0], encodedVectorList[0]
+            if np.array_equal(cur_check, check_value):
+                return information
+        return informationList[0]
 
     def genieSingleDecodeSimulation(self, xVectorDistribution, xyVectorDistribution, trustXYProbs):
         """Pick up statistics of a single decoding run
@@ -241,9 +241,10 @@ class QaryPolarEncoderDecoder:
                 next_informationVectorIndex = informationVectorIndex + 1
             else:
                 marginalizedVector = xVectorDistribution.calcMarginalizedProbabilities()
-                encodedVector[0] = min(
-                    np.searchsorted(np.cumsum(marginalizedVector), self.randomlyGeneratedNumbers[uIndex]),
-                    self.q - 1)
+                # encodedVector[0] = min(
+                #     np.searchsorted(np.cumsum(marginalizedVector), self.randomlyGeneratedNumbers[uIndex]),
+                #     self.q - 1)
+                encodedVector[0] = 0
                 next_uIndex = uIndex + 1
                 next_informationVectorIndex = informationVectorIndex
 
@@ -347,9 +348,10 @@ class QaryPolarEncoderDecoder:
                 # Calculate the frozen value for each branch and append it to the corresponding path
                 for i in range(inListSize):
                     marginalizedVector = xVectorDistributionList[i].calcMarginalizedProbabilities()
-                    encodedVectorList[i][0] = min(
-                        np.searchsorted(np.cumsum(marginalizedVector), self.randomlyGeneratedNumbers[uIndex]),
-                        self.q - 1)
+                    # encodedVectorList[i][0] = min(
+                    #     np.searchsorted(np.cumsum(marginalizedVector), self.randomlyGeneratedNumbers[uIndex]),
+                    #     self.q - 1)
+                    encodedVectorList[i][0] = 0
                 next_uIndex = uIndex + 1
                 next_informationVectorIndex = informationVectorIndex
                 original_indices_map = np.arange(inListSize)
@@ -420,58 +422,48 @@ class QaryPolarEncoderDecoder:
                     originalIndicesMap)
 
     def calculate_syndrome_and_complement(self, u_message):
-        x_message = polarTransformOfQudits(self.q, u_message)
+        y = polarTransformOfQudits(self.q, u_message)
 
-        w = np.copy(x_message)
-        w[np.array(self.infoSet)] = 0
-        w[np.array(self.frozenSet)] *= self._q - 1
-        w[np.array(self.frozenSet)] %= self._q
+        w = np.copy(y)
+        w[list(self.infoSet)] = 0
+        w[list(self.frozenSet)] *= self.q - 1
+        w[list(self.frozenSet)] %= self.q
 
-        u = x_message
-        u[np.array(self.frozenSet)] = 0
+        u = y
+        u[list(self.frozenSet)] = 0
 
         return w, u
 
     def get_message_info_bits(self, u_message):
-        return u_message[np.array(self.infoSet)]
+        return u_message[list(self.infoSet)]
 
     def get_message_frozen_bits(self, u_message):
-        return u_message[np.array(self.frozenSet)]
+        return u_message[list(self.frozenSet)]
 
-    def ir(self, enc_dec, a, b, list_size, check_size):
+    def ir(self,  a, b, xVectorDistribution, make_xyVectorDistribution, list_size=1, check_size=0):
         w, u = self.calculate_syndrome_and_complement(a)
         a_key = self.get_message_info_bits(u)
+        x_b = np.mod(np.add(b, polarTransformOfQudits(self.q, w)), self.q)
 
-        check_matrix = np.random.choice(range(self.q), (enc_dec.k, check_size))
-        check_value = np.matmul(a_key, check_matrix) % self.q
-
-        # information = informationRNG.choices(range(0, q), k=encDec.k)
-        # encodedVector = enc_dec.encode(xVectorDistribution, information)
-        #
-        # codeword = make_codeword(encodedVector)
-        #
-        # receivedWord = simulateChannel(codeword)
-        # xyVectorDistribution = make_xyVectorDistribution(receivedWord)
-        #
-        # check_matrix = np.random.choice(range(q), (encDec.k, checkSize))
-        # check_value = np.matmul(information, check_matrix) % q
-        #
-        # (decodedInformation, decodedVector) = enc_dec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check_value)
-
-        x_b = np.mod(np.sum(b, polarTransformOfQudits(self.q, w)), self.q)
-        u_b = self.decode(x_b, list_size=list_size, check_value=check_value, encoding_matrix=check_matrix)
-        b_key = self.get_message_info_bits(u_b)
+        if list_size == 1:
+            b_key = self.decode(xVectorDistribution, make_xyVectorDistribution(x_b))
+        else:
+            check_matrix = np.random.choice(range(self.q), (self.k, check_size))
+            check_value = np.matmul(a_key, check_matrix) % self.q
+            b_key = self.listDecode(xVectorDistribution, make_xyVectorDistribution(x_b), list_size, check_matrix, check_value)
 
         return a_key, b_key
 
-    def ir2(self, a, b, xVectorDistribution, make_xyVectorDistribution):
+    def ir2(self, a, b, xVectorDistribution, make_xyVectorDistribution, maxListSize, check_size):
         a_key = polarTransformOfQudits(self.q, a)[np.array(list(self.infoSet))]
-        b_key = self.decode(xVectorDistribution, make_xyVectorDistribution(b))
+        check_matrix = np.random.choice(range(self.q), (self.k, check_size))
+        check_value = np.matmul(a_key, check_matrix) % self.q
+        b_key = self.listDecode(xVectorDistribution, make_xyVectorDistribution(b), maxListSize, check_matrix, check_value)
         return a_key, b_key
 
 
-def ir2Simulation(q, length, make_xVectorDistribution, simulateChannel, make_xyVectorDistribution, numberOfTrials,
-                  frozenSet, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0):
+def irSimulation(q, length, make_xVectorDistribution, simulateChannel, make_xyVectorDistribution, numberOfTrials,
+                  frozenSet, maxListSize=1, checkSize=0, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0, ir_version=1):
     badKeys = 0
     xVectorDistribution = make_xVectorDistribution()
     encDec = QaryPolarEncoderDecoder(q, length, frozenSet, commonRandomnessSeed)
@@ -482,14 +474,17 @@ def ir2Simulation(q, length, make_xVectorDistribution, simulateChannel, make_xyV
         a = informationRNG.choices(range(0, q), k=encDec.length)
         b = simulateChannel(a)
 
-        a_key, b_key = encDec.ir2(a, b, xVectorDistribution, make_xyVectorDistribution)
+        if ir_version == 1:
+            a_key, b_key = encDec.ir(a, b, xVectorDistribution, make_xyVectorDistribution, maxListSize, checkSize)
+        if ir_version == 2:
+            a_key, b_key = encDec.ir2(a, b, xVectorDistribution, make_xyVectorDistribution, maxListSize, checkSize)
 
         if not np.array_equal(a_key, b_key):
             badKeys += 1
             if verbosity > 0:
-                s = "Bad key"
-                s += "Alice's key:\n" + str(a_key)
-                s += "\nBob's key:\n" + str(b_key)
+                s = "Bad key\n"
+                s += "Alice's key:\t" + str(a_key)
+                s += "\nBob's key:  \t" + str(b_key)
                 print(s)
         else:
             if verbosity > 0:
@@ -533,7 +528,7 @@ def encodeDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, s
         receivedWord = simulateChannel(codeword)
         xyVectorDistribution = make_xyVectorDistribution(receivedWord)
 
-        (decodedVector, decodedInformation) = encDec.decode(xVectorDistribution, xyVectorDistribution)
+        decodedInformation = encDec.decode(xVectorDistribution, xyVectorDistribution)
 
         if not np.array_equal(information, decodedInformation):
             misdecodedWords += 1
@@ -586,7 +581,7 @@ def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codewor
         check_matrix = np.random.choice(range(q), (encDec.k, checkSize))
         check_value = np.matmul(information, check_matrix) % q
 
-        (decodedInformation, decodedVector) = encDec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize,
+        decodedInformation = encDec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize,
                                                                 check_matrix, check_value)
 
         if not np.array_equal(information, decodedInformation):

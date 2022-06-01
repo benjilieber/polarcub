@@ -86,8 +86,8 @@ class BinaryMemorylessDistribution:
         return mmseSum
 
     def normalize(self):
-        probSum = sum(sum(self.prob, []))
-        self.probs = [prob / probSum for probPair in self.probs for prob in probPair]
+        probSum = sum(sum(self.probs, []))
+        self.probs = [[prob / probSum for prob in probPair] for probPair in self.probs]
 
     def removeZeroProbOutput(self):
         """remove output symbols with probability zero.

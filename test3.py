@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 
 import random
+import os.path
+import numpy as np
 
 import QaryPolarEncoderDecoder
 from ScalarDistributions import QaryMemorylessDistribution
@@ -34,7 +36,6 @@ def simulateChannel_fromQaryMemorylessDistribution(xyDistribution):
             for y in range(len(xyDistribution.probs)):
                 if probSum + xyDistribution.probXGivenY(x, y) >= rand:
                     receivedWord.append(y)
-                    # print("x = ", x, ", y = ", y, " probXGivenY(x,y) = ", xyDistribution.probXGivenY(x,y), ", rand = ", rand)
                     break
                 else:
                     probSum += xyDistribution.probXGivenY(x, y)
@@ -58,8 +59,52 @@ def make_xyVectorDistribution_fromQaryMemorylessDistribution(xyDistribution):
 
     return make_xyVectrorDistribution
 
+def get_construction_path(q, N, QER):
+    """
+    Returns the path to a file containing a construction of the code (i.e. indices of bits in codeword
+    sorted in the descending order of their "quality". The path depends on codeword length and the
+    chosen construction method. All construction are stored in the package folder.
+    :return: A string with absolute path to the code construction.
+    """
+    construction_path = os.path.dirname(os.path.abspath(__file__))
+    construction_path += '/polar_codes_constructions/'
+    construction_path += 'q={}/'.format(q)
+    construction_path += 'N={}/'.format(N)
+    construction_path += '{}/'.format('QER={}'.format(QER))
 
-def test(q, listDecode=False, maxListSize=None, crcSize=None):
+    return construction_path
+
+def getFrozenSet(q, N, n, L, upperBoundOnErrorProbability, xDistribution, xyDistribution, QER):
+    """
+    Constructs the code, i.e. defines which bits are informational and which are frozen.
+    Two behaviours are possible:
+    1) If there is previously saved data with the sorted indices of channels for given N, QBER
+    and construction method, it loads this data and uses it to define sets of informational and frozen bits.
+    2) Otherwise, it calls the preferred method from the dict of methods to construct the code. Then, it
+    saves sorted indices of channels and finally defines sets of informational and frozen bits.
+    :param construction_method: A string defining which of the construction method to use;
+    :return: void.
+    """
+    # Define the name where the dumped data should be stored
+    construction_path = get_construction_path(q, N, QER)
+    construction_name = construction_path + '{}.npy'.format("DegradingUpgrading_L=" + str(L) + "_upperBoundOnErrorProbability=" + str(upperBoundOnErrorProbability))
+
+    print(construction_name)
+    # If the file with data exists, load ordered_channels
+    if os.path.isfile(construction_name):
+        frozenSet = set(np.load(construction_name))
+    # Otherwise, obtain construction and save it to the file
+    else:
+        frozenSet = QaryMemorylessDistribution.calcFrozenSet_degradingUpgrading(n, L, upperBoundOnErrorProbability,
+                                                                            xDistribution, xyDistribution)
+
+        if not os.path.exists(construction_path):
+            os.makedirs(construction_path)
+        np.save(construction_name, list(frozenSet))
+
+    return frozenSet
+
+def test(q, listDecode=False, maxListSize=None, checkSize=None):
     print("q = " + str(q))
 
     p = 0.99
@@ -72,8 +117,7 @@ def test(q, listDecode=False, maxListSize=None, crcSize=None):
     xDistribution = None
     xyDistribution = QaryMemorylessDistribution.makeQSC(q, p)
 
-    frozenSet = QaryMemorylessDistribution.calcFrozenSet_degradingUpgrading(n, L, upperBoundOnErrorProbability,
-                                                                            xDistribution, xyDistribution)
+    frozenSet = getFrozenSet(q, N, n, L, upperBoundOnErrorProbability, xDistribution, xyDistribution, p)
 
     # print("Rate = ", N - len(frozenSet), "/", N, " = ", (N - len(frozenSet)) / N)
 
@@ -92,17 +136,17 @@ def test(q, listDecode=False, maxListSize=None, crcSize=None):
         QaryPolarEncoderDecoder.encodeListDecodeSimulation(q, N, make_xVectorDistribution, make_codeword,
                                                            simulateChannel,
                                                            make_xyVectorDistribution, numberOfTrials, frozenSet,
-                                                           maxListSize, crcSize, verbosity=0)
+                                                           maxListSize, checkSize, verbosity=0)
 
     # # trustXYProbs = False
     # trustXYProbs = True
     # PolarEncoderDecoder.genieEncodeDecodeSimulation(N, make_xVectorDistribuiton, make_codeword, simulateChannel, make_xyVectorDistribution, numberOfTrials, upperBoundOnErrorProbability, trustXYProbs)
 
 
-def test_ir2(q):
+def test_ir(q, maxListSize=1, checkSize=0, ir_version=1):
     p = 0.99
     L = 100
-    n = 5
+    n = 6
     N = 2 ** n
 
     upperBoundOnErrorProbability = 0.1
@@ -110,8 +154,8 @@ def test_ir2(q):
     xDistribution = None
     xyDistribution = QaryMemorylessDistribution.makeQSC(q, p)
 
-    frozenSet = QaryMemorylessDistribution.calcFrozenSet_degradingUpgrading(n, L, upperBoundOnErrorProbability,
-                                                                            xDistribution, xyDistribution)
+    frozenSet = getFrozenSet(q, N, n, L, upperBoundOnErrorProbability, xDistribution, xyDistribution, p)
+
 
     # print("Rate = ", N - len(frozenSet), "/", N, " = ", (N - len(frozenSet)) / N)
 
@@ -122,14 +166,17 @@ def test_ir2(q):
     simulateChannel = simulateChannel_fromQaryMemorylessDistribution(xyDistribution)
     make_xyVectorDistribution = make_xyVectorDistribution_fromQaryMemorylessDistribution(xyDistribution)
 
-    QaryPolarEncoderDecoder.ir2Simulation(q, N, make_xVectorDistribution, simulateChannel,
-                                          make_xyVectorDistribution, numberOfTrials, frozenSet,
-                                          verbosity=1)
+    QaryPolarEncoderDecoder.irSimulation(q, N, make_xVectorDistribution, simulateChannel,
+                                          make_xyVectorDistribution, numberOfTrials, frozenSet, maxListSize, checkSize,
+                                          verbosity=1, ir_version=ir_version)
 
 
 # test(2)
-# test(3)
-# test(3, listDecode=True, maxListSize=1, crcSize=1)
-# test(3, listDecode=True, maxListSize=9, crcSize=4)
-test_ir2(2)
-test_ir2(3)
+test(3)
+test(3, listDecode=True, maxListSize=1, checkSize=1)
+test(3, listDecode=True, maxListSize=9, checkSize=4)
+# test_ir(2)
+# test_ir(2, 100, 20)
+# test_ir(3, 20, 4)
+# test_ir(3)
+# test_ir(3, ir_version=2)
