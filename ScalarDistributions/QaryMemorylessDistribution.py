@@ -2,6 +2,7 @@ import math
 import sys
 from enum import Enum
 from math import floor
+import os.path
 
 import numpy as np
 
@@ -893,7 +894,7 @@ def upgrade_cost_lower_bound(q, L):
     return kappa * (L ** (-2 / (q - 1))) / math.log(2)
 
 
-def calcFrozenSet_degradingUpgrading(n, L, upperBoundOnErrorProbability, xDistribution, xyDistribution):
+def calcFrozenSet_degradingUpgrading(n, L, xDistribution, xyDistribution, directory_name=None, upperBoundOnErrorProbability=None, numInfoIndices=None, verbosity=False):
     """Calculate the frozen set by degrading and upgrading the a-priori and joint distributions, respectively
 
     Args:
@@ -909,44 +910,69 @@ def calcFrozenSet_degradingUpgrading(n, L, upperBoundOnErrorProbability, xDistri
     Returns:
         frozenSet (set): the set of frozen indices
     """
-
     assert (n >= 0)
     assert (L > 0)
-    assert (upperBoundOnErrorProbability > 0)
+    assert (upperBoundOnErrorProbability is None or upperBoundOnErrorProbability > 0)
     assert (xyDistribution is not None)
-
-    if xDistribution is not None:
-        xDists = []
-        xDists.append([])
-        xDists[0].append(xDistribution)
-
-        for m in range(1, n + 1):
-            xDists.append([])
-            for dist in xDists[m - 1]:
-                xDists[m].append(dist.minusTransform().upgrade(L))
-                xDists[m].append(dist.plusTransform().upgrade(L))
-
-    xyDists = []
-    xyDists.append([])
-    xyDists[0].append(xyDistribution)
-
-    for m in range(1, n + 1):
-        xyDists.append([])
-        for dist in xyDists[m - 1]:
-            xyDists[m].append(dist.minusTransform().degrade(L))
-            xyDists[m].append(dist.plusTransform().degrade(L))
-
-    N = 1 << n
-    TVvec = []
-    Pevec = []
-
-    for i in range(N):
-        if xDistribution is not None:
-            TVvec.append(xDists[n][i].totalVariation())
-        else:
-            TVvec.append(0.0)
-
-        Pevec.append(xyDists[n][i].errorProb())
-
-    frozenSet = QaryPolarEncoderDecoder.frozenSetFromTVAndPe(TVvec, Pevec, upperBoundOnErrorProbability)
+    TVvec, Pevec = calcTVAndPe_degradingUpgrading(n, L, xDistribution, xyDistribution, directory_name, verbosity=verbosity)
+    frozenSet = QaryPolarEncoderDecoder.frozenSetFromTVAndPe(TVvec, Pevec, upperBoundOnErrorProbability, numInfoIndices, verbosity=verbosity)
     return frozenSet
+
+def calcTVAndPe_degradingUpgrading(n, L, xDistribution, xyDistribution, directory_name=None, verbosity=False):
+    if directory_name is not None:
+        tv_construction_name = directory_name + '{}.npy'.format("DegradingUpgrading_L=" + str(L) + "_tv")
+        pe_construction_name = directory_name + '{}.npy'.format("DegradingUpgrading_L=" + str(L) + "_pe")
+        if verbosity:
+            print(tv_construction_name)
+            print(pe_construction_name)
+        # If the files with data exist, load them
+        if os.path.isfile(tv_construction_name) and os.path.isfile(pe_construction_name):
+            tv = np.load(tv_construction_name)
+            pe = np.load(pe_construction_name)
+            return tv, pe
+        # Otherwise, obtain construction and save them to the files
+        else:
+            if verbosity:
+                print("Calculating TV and Pe vectors...")
+
+            if xDistribution is not None:
+                xDists = []
+                xDists.append([])
+                xDists[0].append(xDistribution)
+
+                for m in range(1, n + 1):
+                    xDists.append([])
+                    for dist in xDists[m - 1]:
+                        xDists[m].append(dist.minusTransform().upgrade(L))
+                        xDists[m].append(dist.plusTransform().upgrade(L))
+
+            xyDists = []
+            xyDists.append([])
+            xyDists[0].append(xyDistribution)
+
+            for m in range(1, n + 1):
+                xyDists.append([])
+                for dist in xyDists[m - 1]:
+                    xyDists[m].append(dist.minusTransform().degrade(L))
+                    xyDists[m].append(dist.plusTransform().degrade(L))
+
+            N = 1 << n
+            TVvec = []
+            Pevec = []
+
+            for i in range(N):
+                if xDistribution is not None:
+                    TVvec.append(xDists[n][i].totalVariation())
+                else:
+                    TVvec.append(0.0)
+
+                Pevec.append(xyDists[n][i].errorProb())
+
+            if verbosity:
+                print("Done calculating!")
+            if not os.path.exists(directory_name):
+                os.makedirs(directory_name)
+            np.save(tv_construction_name, TVvec)
+            np.save(pe_construction_name, Pevec)
+
+            return TVvec, Pevec

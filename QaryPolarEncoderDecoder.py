@@ -1,6 +1,7 @@
 import random
 import sys
 from enum import Enum
+import math
 
 import numpy as np
 
@@ -30,6 +31,8 @@ class QaryPolarEncoderDecoder:
         self.k = length - len(self.frozenSet)
         self.frozenOrInformation = self.initFrozenOrInformation()
         self.randomlyGeneratedNumbers = self.initRandomlyGeneratedNumbers()
+
+        self.bestCandidate = None
 
     def initFrozenOrInformation(self):
         frozenOrInformation = np.full(self.length, uIndexType.information, dtype=uIndexType)
@@ -100,7 +103,7 @@ class QaryPolarEncoderDecoder:
 
         return information
 
-    def listDecode(self, xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check_value):
+    def listDecode(self, xVectorDistribution, xyVectorDistribution, maxListSize, check_matrix, check_value, actualInformation=None, verbosity=0):
         """List-decode k information bits according to a-priori input distribution and a-posteriori input distribution
 
         Args:
@@ -131,10 +134,27 @@ class QaryPolarEncoderDecoder:
         assert (len(originalIndicesMap) == finalListSize)
         assert (np.count_nonzero(originalIndicesMap) == 0)
 
-        for information in informationList:
-            cur_check = np.matmul(information, check_matrix) % self.q
-            if np.array_equal(cur_check, check_value):
-                return information
+        if actualInformation is not None:
+            for information in informationList[:maxListSize]:
+                if np.array_equal(information, actualInformation):
+                    return information
+            # if verbosity:
+            #     print("actual information:" + str(actualInformation))
+            #     print(informationList[:maxListSize])
+            return informationList[0]
+
+        candidateList = np.array([np.array_equal(np.matmul(information, check_matrix) % self.q, check_value) for information in informationList[:maxListSize]])
+        # if verbosity:
+        #     print(candidateList)
+        if True in candidateList:
+            for i, val in enumerate(candidateList):
+                if val:
+                    return informationList[i]
+
+        # for information in informationList[:maxListSize]:
+        #     cur_check = np.matmul(information, check_matrix) % self.q
+        #     if np.array_equal(cur_check, check_value):
+        #         return information
         return informationList[0]
 
     def genieSingleDecodeSimulation(self, xVectorDistribution, xyVectorDistribution, trustXYProbs):
@@ -344,14 +364,13 @@ class QaryPolarEncoderDecoder:
                     original_indices_map = np.repeat(np.arange(inListSize), self.q)
             else:
                 newListSize = inListSize
-                encodedVectorList = np.full((inListSize, segmentSize), -1, dtype=np.int64)
+                encodedVectorList = np.full((inListSize, segmentSize), 0, dtype=np.int64)
                 # Calculate the frozen value for each branch and append it to the corresponding path
-                for i in range(inListSize):
-                    marginalizedVector = xVectorDistributionList[i].calcMarginalizedProbabilities()
+                # for i in range(inListSize):
+                    # marginalizedVector = xVectorDistributionList[i].calcMarginalizedProbabilities()
                     # encodedVectorList[i][0] = min(
                     #     np.searchsorted(np.cumsum(marginalizedVector), self.randomlyGeneratedNumbers[uIndex]),
                     #     self.q - 1)
-                    encodedVectorList[i][0] = 0
                 next_uIndex = uIndex + 1
                 next_informationVectorIndex = informationVectorIndex
                 original_indices_map = np.arange(inListSize)
@@ -370,12 +389,14 @@ class QaryPolarEncoderDecoder:
             xyMinusVectorDistributionList = []
             for i in range(inListSize):
                 xMinusVectorDistribution = xVectorDistributionList[i].minusTransform()
-                xMinusVectorDistribution.normalize()
+                # xMinusVectorDistribution.normalize()
                 xMinusVectorDistributionList.append(xMinusVectorDistribution)
 
                 xyMinusVectorDistribution = xyVectorDistributionList[i].minusTransform()
-                xyMinusVectorDistribution.normalize()
+                # xyMinusVectorDistribution.normalize()
                 xyMinusVectorDistributionList.append(xyMinusVectorDistribution)
+            xMinusVectorDistributionList = normalize(xMinusVectorDistributionList)
+            xyMinusVectorDistributionList = normalize(xyMinusVectorDistributionList)
 
             (minusInformationList, minusEncodedVectorList, next_uIndex, next_informationVectorIndex, minusListSize,
              minusOriginalIndicesMap) = self.recursiveListDecode(informationList, uIndex, informationVectorIndex,
@@ -389,12 +410,14 @@ class QaryPolarEncoderDecoder:
                 origI = minusOriginalIndicesMap[i]
 
                 xPlusVectorDistribution = xVectorDistributionList[origI].plusTransform(minusEncodedVectorList[i])
-                xPlusVectorDistribution.normalize()
+                # xPlusVectorDistribution.normalize()
                 xPlusVectorDistributionList.append(xPlusVectorDistribution)
 
                 xyPlusVectorDistribution = xyVectorDistributionList[origI].plusTransform(minusEncodedVectorList[i])
-                xyPlusVectorDistribution.normalize()
+                # xyPlusVectorDistribution.normalize()
                 xyPlusVectorDistributionList.append(xyPlusVectorDistribution)
+            xPlusVectorDistributionList = normalize(xPlusVectorDistributionList)
+            xyPlusVectorDistributionList = normalize(xyPlusVectorDistributionList)
 
             uIndex = next_uIndex
             informationVectorIndex = next_informationVectorIndex
@@ -440,7 +463,7 @@ class QaryPolarEncoderDecoder:
     def get_message_frozen_bits(self, u_message):
         return u_message[list(self.frozenSet)]
 
-    def ir(self,  a, b, xVectorDistribution, make_xyVectorDistribution, list_size=1, check_size=0):
+    def ir(self,  a, b, xVectorDistribution, make_xyVectorDistribution, list_size=1, check_size=0, verbosity=0):
         w, u = self.calculate_syndrome_and_complement(a)
         a_key = self.get_message_info_bits(u)
         x_b = np.mod(np.add(b, polarTransformOfQudits(self.q, w)), self.q)
@@ -450,17 +473,29 @@ class QaryPolarEncoderDecoder:
         else:
             check_matrix = np.random.choice(range(self.q), (self.k, check_size))
             check_value = np.matmul(a_key, check_matrix) % self.q
-            b_key = self.listDecode(xVectorDistribution, make_xyVectorDistribution(x_b), list_size, check_matrix, check_value)
+            b_key = self.listDecode(xVectorDistribution, make_xyVectorDistribution(x_b), list_size, check_matrix, check_value, a_key, verbosity=verbosity)
 
         return a_key, b_key
 
-    def ir2(self, a, b, xVectorDistribution, make_xyVectorDistribution, maxListSize, check_size):
+    def ir2(self, a, b, xVectorDistribution, make_xyVectorDistribution, maxListSize, check_size, verbosity=0):
         a_key = polarTransformOfQudits(self.q, a)[np.array(list(self.infoSet))]
         check_matrix = np.random.choice(range(self.q), (self.k, check_size))
         check_value = np.matmul(a_key, check_matrix) % self.q
-        b_key = self.listDecode(xVectorDistribution, make_xyVectorDistribution(b), maxListSize, check_matrix, check_value)
+        b_key = self.listDecode(xVectorDistribution, make_xyVectorDistribution(b), maxListSize, check_matrix, check_value, verbosity=verbosity)
         return a_key, b_key
 
+def calcNormalizationVector(dist_list):
+    segment_size = len(dist_list[0].probs)
+    normalization = np.zeros(segment_size)
+    for i in range(segment_size):
+        normalization[i] = max([dist.probs[i].max(axis=0) for dist in dist_list])
+    return normalization
+
+def normalize(dist_list):
+    normalization_vector = calcNormalizationVector(dist_list)
+    for dist in dist_list:
+        dist.normalize(normalization_vector)
+    return dist_list
 
 def irSimulation(q, length, make_xVectorDistribution, simulateChannel, make_xyVectorDistribution, numberOfTrials,
                   frozenSet, maxListSize=1, checkSize=0, commonRandomnessSeed=1, randomInformationSeed=1, verbosity=0, ir_version=1):
@@ -475,22 +510,29 @@ def irSimulation(q, length, make_xVectorDistribution, simulateChannel, make_xyVe
         b = simulateChannel(a)
 
         if ir_version == 1:
-            a_key, b_key = encDec.ir(a, b, xVectorDistribution, make_xyVectorDistribution, maxListSize, checkSize)
+            a_key, b_key = encDec.ir(a, b, xVectorDistribution, make_xyVectorDistribution, maxListSize, checkSize, verbosity=verbosity)
         if ir_version == 2:
-            a_key, b_key = encDec.ir2(a, b, xVectorDistribution, make_xyVectorDistribution, maxListSize, checkSize)
+            a_key, b_key = encDec.ir2(a, b, xVectorDistribution, make_xyVectorDistribution, maxListSize, checkSize, verbosity=verbosity)
 
         if not np.array_equal(a_key, b_key):
             badKeys += 1
-            if verbosity > 0:
-                s = "Bad key\n"
-                s += "Alice's key:\t" + str(a_key)
-                s += "\nBob's key:  \t" + str(b_key)
-                print(s)
-        else:
-            if verbosity > 0:
-                print("Good key")
+            # if verbosity > 0:
+            #     s = "Bad key\n"
+            #     s += "Alice's key:\t" + str(a_key)
+            #     s += "\nBob's key:  \t" + str(b_key)
+            #     print(s)
+        # else:
+        #     if verbosity > 0:
+        #         print("Good key")
 
-    print("Error probability = ", badKeys, "/", numberOfTrials, " = ", badKeys / numberOfTrials)
+    rate = (math.log(q, 2)*len(a_key) - math.log(maxListSize, 2))/length
+    error_prob = badKeys / numberOfTrials
+
+    if verbosity:
+        print("Rate: ", rate)
+        print("Error probability = ", badKeys, "/", numberOfTrials, " = ", error_prob)
+
+    return error_prob, rate
 
 
 def encodeDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, simulateChannel,
@@ -532,13 +574,13 @@ def encodeDecodeSimulation(q, length, make_xVectorDistribution, make_codeword, s
 
         if not np.array_equal(information, decodedInformation):
             misdecodedWords += 1
-            if verbosity > 0:
-                s = str(t) + ") error, transmitted information:\n" + str(information)
-                s += "\ndecoded information:\n" + str(decodedInformation)
-                s += "\nencoded vector before guard bands added:\n" + str(encodedVector)
-                s += "\ncodeword:\n" + str(codeword)
-                s += "\nreceived word:\n" + str(receivedWord)
-                print(s)
+            # if verbosity > 0:
+            #     s = str(t) + ") error, transmitted information:\n" + str(information)
+            #     s += "\ndecoded information:\n" + str(decodedInformation)
+            #     s += "\nencoded vector before guard bands added:\n" + str(encodedVector)
+            #     s += "\ncodeword:\n" + str(codeword)
+            #     s += "\nreceived word:\n" + str(receivedWord)
+            #     print(s)
 
     print("Error probability = ", misdecodedWords, "/", numberOfTrials, " = ", misdecodedWords / numberOfTrials)
 
@@ -582,17 +624,17 @@ def encodeListDecodeSimulation(q, length, make_xVectorDistribution, make_codewor
         check_value = np.matmul(information, check_matrix) % q
 
         decodedInformation = encDec.listDecode(xVectorDistribution, xyVectorDistribution, maxListSize,
-                                                                check_matrix, check_value)
+                                                                check_matrix, check_value, information)
 
         if not np.array_equal(information, decodedInformation):
             misdecodedWords += 1
-            if verbosity > 0:
-                s = str(t) + ") error, transmitted information:\n" + str(information)
-                s += "\ndecoded information:\n" + str(decodedInformation)
-                s += "\nencoded vector before guard bands added:\n" + str(encodedVector)
-                s += "\ncodeword:\n" + str(codeword)
-                s += "\nreceived word:\n" + str(receivedWord)
-                print(s)
+            # if verbosity > 0:
+            #     s = str(t) + ") error, transmitted information:\n" + str(information)
+            #     s += "\ndecoded information:\n" + str(decodedInformation)
+            #     s += "\nencoded vector before guard bands added:\n" + str(encodedVector)
+            #     s += "\ncodeword:\n" + str(codeword)
+            #     s += "\nreceived word:\n" + str(receivedWord)
+            #     print(s)
 
     print("Error probability = ", misdecodedWords, "/", numberOfTrials, " = ", misdecodedWords / numberOfTrials)
 
@@ -714,27 +756,32 @@ def polarTransformOfQudits(q, xvec):
         return np.concatenate((ufirst, usecond))
 
 
-def frozenSetFromTVAndPe(TVvec, Pevec, errorUpperBoundForFrozenSet):
+def frozenSetFromTVAndPe(TVvec, Pevec, errorUpperBoundForFrozenSet=None, numInfoIndices=None, verbosity=False):
     TVPlusPeVec = np.add(TVvec, Pevec)
     sortedIndices = sorted(range(len(TVPlusPeVec)), key=lambda k: TVPlusPeVec[k])
 
-    errorSum = 0.0
-    indexInSortedIndicesArray = -1
     frozenSet = set()
 
-    while errorSum < errorUpperBoundForFrozenSet and indexInSortedIndicesArray + 1 < len(TVPlusPeVec):
-        i = sortedIndices[indexInSortedIndicesArray + 1]
-        if TVPlusPeVec[i] + errorSum <= errorUpperBoundForFrozenSet:
-            errorSum += TVPlusPeVec[i]
-            indexInSortedIndicesArray += 1
-        else:
-            break
+    if numInfoIndices is None:
+        errorSum = 0.0
+        indexInSortedIndicesArray = -1
+        while errorSum < errorUpperBoundForFrozenSet and indexInSortedIndicesArray + 1 < len(TVPlusPeVec):
+            i = sortedIndices[indexInSortedIndicesArray + 1]
+            if TVPlusPeVec[i] + errorSum <= errorUpperBoundForFrozenSet:
+                errorSum += TVPlusPeVec[i]
+                indexInSortedIndicesArray += 1
+            else:
+                break
+    else:
+        indexInSortedIndicesArray = numInfoIndices
 
     for j in range(indexInSortedIndicesArray + 1, len(TVPlusPeVec)):
         i = sortedIndices[j]
         frozenSet.add(i)
 
-    print("frozen set =", frozenSet)
-    print("fraction of non-frozen indices =", 1.0 - len(frozenSet) / len(TVPlusPeVec))
+    if verbosity:
+        print("frozen set =", frozenSet)
+        if numInfoIndices is None:
+            print("fraction of info indices =", 1.0 - len(frozenSet) / len(TVPlusPeVec))
 
     return frozenSet

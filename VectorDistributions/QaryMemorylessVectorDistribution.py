@@ -62,7 +62,9 @@ class QaryMemorylessVectorDistribution(VectorDistribution.VectorDistribution):
 
         if (s > 0.0):
             for x in range(self.q):
-                marginalizedProbs[x] = self.probs[0][x] / s
+                # TODO: Consider restoring this normalization
+                # marginalizedProbs[x] = self.probs[0][x] / s
+                marginalizedProbs[x] = self.probs[0][x]
         else:
             for x in range(self.q):
                 marginalizedProbs[x] = 1.0 / self.q
