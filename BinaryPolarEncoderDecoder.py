@@ -276,13 +276,13 @@ class BinaryPolarEncoderDecoder():
         else:
             xMinusVectorDistribution = xVectorDistribution.minusTransform()
             normalization = xMinusVectorDistribution.calcNormalizationVector()
-            xMinusVectorDistribution.normalize(normalization)
+            xMinusVectorDistribution.normalizeDistList(normalization)
 
             # For decoding
             if xyVectorDistribution != None:
                 xyMinusVectorDistribution = xyVectorDistribution.minusTransform()
                 normalization = xyMinusVectorDistribution.calcNormalizationVector()
-                xyMinusVectorDistribution.normalize(normalization)
+                xyMinusVectorDistribution.normalizeDistList(normalization)
             else:
                 xyMinusVectorDistribution = None
 
@@ -296,13 +296,13 @@ class BinaryPolarEncoderDecoder():
 
             xPlusVectorDistribution = xVectorDistribution.plusTransform(minusEncodedVector)
             normalization = xPlusVectorDistribution.calcNormalizationVector()
-            xPlusVectorDistribution.normalize(normalization)
+            xPlusVectorDistribution.normalizeDistList(normalization)
 
             # For decoding
             if xyVectorDistribution != None:
                 xyPlusVectorDistribution = xyVectorDistribution.plusTransform(minusEncodedVector)
                 normalization = xyPlusVectorDistribution.calcNormalizationVector()
-                xyPlusVectorDistribution.normalize(normalization)
+                xyPlusVectorDistribution.normalizeDistList(normalization)
             else:
                 xyPlusVectorDistribution = None
 

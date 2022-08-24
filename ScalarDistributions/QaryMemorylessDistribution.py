@@ -23,9 +23,10 @@ class Binning(Enum):
 
 
 class QaryMemorylessDistribution:
-    def __init__(self, q):
+    def __init__(self, q, use_log=False):
         self.probs = []  # probs[yindex][xindex]
         self.q = q
+        self.use_log = use_log
 
     def __str__(self):
         s = "Qry memoryless channel with q = " + str(self.q) + " and " + str(
@@ -753,18 +754,24 @@ class QaryMemorylessDistribution:
         M = floor(L ** (1.0 / (self.q - 1)) + sys.float_info.epsilon)
         return M
 
-    def makeQaryMemorylessVectorDistribution(self, length, yvec):
-        qmvd = QaryMemorylessVectorDistribution.QaryMemorylessVectorDistribution(self.q, length)
+    def makeQaryMemorylessVectorDistribution(self, length, yvec, use_log=False):
+        qmvd = QaryMemorylessVectorDistribution.QaryMemorylessVectorDistribution(self.q, length, use_log)
 
         if yvec is not None:
             assert (len(yvec) == length)
             for i in range(length):
                 for x in range(self.q):
-                    qmvd.probs[i][x] = self.probs[yvec[i]][x]
+                    if use_log:
+                        qmvd.probs[i][x] = math.log(self.probs[yvec[i]][x]) if self.probs[yvec[i]][x] != 0 else -math.inf
+                    else:
+                        qmvd.probs[i][x] = self.probs[yvec[i]][x]
         else:
             for i in range(length):
                 for x in range(self.q):
-                    qmvd.probs[i][x] = self.probs[0][x]
+                    if use_log:
+                        qmvd.probs[i][x] = math.log(self.probs[0][x]) if self.probs[0][x] != 0 else -math.inf
+                    else:
+                        qmvd.probs[i][x] = self.probs[0][x]
 
         return qmvd
 
@@ -772,7 +779,8 @@ class QaryMemorylessDistribution:
 # useful channels
 def makeQSC(q, p):
     qsc = QaryMemorylessDistribution(q)
-    qsc.probs = [[(1.0 - p) / q if x == y else p / (q * (q - 1)) for x in range(q)] for y in range(q)]
+    # qsc.probs = [[(1.0 - p) / q if x == y else p / (q * (q - 1)) for x in range(q)] for y in range(q)]
+    qsc.probs = [[1.0 - p if x == y else p / (q - 1) for x in range(q)] for y in range(q)]
     return qsc
 
 
@@ -789,6 +797,11 @@ def makeQEC(q, p):
 
     return qec
 
+def makeAWGN(q, snr, rate):
+    assert (q == 2)
+    awgn = QaryMemorylessDistribution(q)
+    awgn.probs = []
+    return awgn
 
 def makeInputDistribution(probs):
     dist = QaryMemorylessDistribution(len(probs))
